@@ -1,0 +1,43 @@
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: jobpilot
+      MYSQL_USER: jobpilot_user
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-change_this_password}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-change_root_password}
+    ports:
+      - "3307:3306"
+    volumes:
+      - jobpilot_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "jobpilot_user", "--password=${MYSQL_PASSWORD:-change_this_password}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  backend:
+    build: ./backend
+    environment:
+      APP_NAME: JobPilot AI
+      APP_ENV: development
+      API_PREFIX: /api
+      CORS_ORIGINS: http://localhost:5173
+      DATABASE_URL: mysql+pymysql://jobpilot_user:${MYSQL_PASSWORD:-change_this_password}@mysql:3306/jobpilot
+    ports:
+      - "8000:8000"
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    environment:
+      VITE_API_BASE_URL: http://localhost:8000
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+
+volumes:
+  jobpilot_mysql_data:
